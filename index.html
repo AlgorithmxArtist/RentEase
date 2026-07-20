@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RentEase</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    body { margin:0; font-family: Arial; background:#f4f6f9; }
+
+    .navbar {
+      background:#2c3e50; color:white; padding:15px;
+      display:flex; justify-content:space-between;
+    }
+
+    .container { padding:20px; }
+
+    .form input {
+      padding:10px; margin:5px; border-radius:5px; border:1px solid #ccc;
+    }
+
+    .form button {
+      padding:10px; background:#3498db; color:white;
+      
+      border:none; border-radius:5px; cursor:pointer;
+    }
+
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+      gap:15px;
+      margin-top:20px;
+    }
+
+    .card {
+      background:white; padding:15px; border-radius:10px;
+      box-shadow:0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .card img {
+      width:100%;
+      max-height:150px;
+      object-fit:cover;
+      border-radius:8px;
+      margin-bottom:10px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="navbar">
+  <h2>RentEase</h2>
+</div>
+
+<div class="container">
+  <h3>Add Product</h3>
+  <div class="form">
+    <input id="name" placeholder="Product Name">
+    <input id="price" placeholder="Price">
+      <input id="imageUrl" placeholder="Image URL (optional)">
+      <input id="imageFile" type="file" accept="image/*" onchange="previewImage()">
+      <div id="imagePreview"></div>
+      <button onclick="addProduct()">Add</button>
+      <button type="button" onclick="resetCards()" style="background:#e74c3c; margin-left:5px;">Reset</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <h3>Products</h3>
+    <div id="list" class="grid"></div>
+  </div>
+
+<script>
+const API = "http://localhost:5000/api/products";
+
+function loadProducts() {
+  fetch(API)
+    .then(res => res.json())
+    .then(data => {
+      let html = "";
+      data.forEach(p => {
+        html += `
+          <div class="card">
+            ${p.imageData || p.imageUrl ? `<img src="${p.imageData || p.imageUrl}" alt="${p.name}">` : ""}
+            <h4>${p.name}</h4>
+            <p>₹${p.price}/month</p>
+            <button onclick="deleteProduct(${p.id})" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">Delete</button>
+          </div>
+        `;
+      });
+      document.getElementById("list").innerHTML = html;
+    });
+}
+
+function previewImage() {
+  const fileInput = document.getElementById("imageFile");
+  const preview = document.getElementById("imagePreview");
+  preview.innerHTML = "";
+
+  if (!fileInput.files || fileInput.files.length === 0) return;
+
+  const reader = new FileReader();
+  reader.onload = event => {
+    preview.innerHTML = `<img src="${event.target.result}" alt="Preview" style="width:100%; max-height:160px; object-fit:cover; border-radius:8px; margin-top:10px;">`;
+  };
+  reader.readAsDataURL(fileInput.files[0]);
+}
+
+function resetForm() {
+  document.getElementById("name").value = "";
+  document.getElementById("price").value = "";
+  document.getElementById("imageUrl").value = "";
+  document.getElementById("imageFile").value = "";
+  document.getElementById("imagePreview").innerHTML = "";
+}
+
+function resetCards() {
+  resetForm();
+  document.getElementById("list").innerHTML = "";
+}
+
+function addProduct() {
+  const name = document.getElementById("name").value;
+  const price = document.getElementById("price").value;
+  const imageUrl = document.getElementById("imageUrl").value;
+  const imageFile = document.getElementById("imageFile").files[0];
+
+  if (!name || !price) {
+    alert("Please enter a product name and price.");
+    return;
+  }
+
+  const payload = { name, price };
+
+  if (imageUrl.trim()) {
+    payload.imageUrl = imageUrl.trim();
+    submitProduct(payload);
+    return;
+  }
+
+  if (imageFile) {
+    const reader = new FileReader();
+    reader.onload = event => {
+      payload.imageData = event.target.result;
+      submitProduct(payload);
+    };
+    reader.readAsDataURL(imageFile);
+    return;
+  }
+
+  submitProduct(payload);
+}
+
+function submitProduct(payload) {
+  fetch(API, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify(payload)
+  })
+  .then(res => {
+    if (!res.ok) {
+      return res.json().then(err => { throw new Error(err.msg); });
+    }
+    resetForm();
+    loadProducts();
+  })
+  .catch(err => alert(err.message));
+}
+
+function deleteProduct(id) {
+  fetch(`${API}/${id}`, {
+    method: "DELETE"
+  })
+  .then(() => loadProducts());
+}
+
+loadProducts();
+</script>
+
+</body>
+</html>
