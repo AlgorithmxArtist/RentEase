@@ -1,48 +1,28 @@
-const API = "http://localhost:5000/api/products";
+const express = require("express");
+const cors = require("cors");
 
-// GET products
-async function getProducts() {
-  const res = await fetch(API);
-  const data = await res.json();
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-  const container = document.getElementById("products");
-  container.innerHTML = "";
+let products = [];
 
-  data.forEach(p => {
-    container.innerHTML += `
-      <div class="card">
-        <h4>${p.name}</h4>
-        <p>₹${p.price}/month</p>
-        <button onclick="deleteProduct(${p.id})">Delete</button>
-      </div>
-    `;
-  });
-}
+app.get("/api/products", (req, res) => {
+  res.json(products);
+});
 
-// ADD product
-async function addProduct() {
-  const name = document.getElementById("name").value;
-  const price = document.getElementById("price").value;
+app.post("/api/products", (req, res) => {
+  if (products.length >= 5) {
+    return res.status(400).json({ msg: "Maximum 5 products allowed" });
+  }
+  const id = Date.now(); // simple unique id
+  products.push({ id, ...req.body });
+  res.json({ msg: "added" });
+});
 
-  await fetch(API, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ name, price })
-  });
+app.delete("/api/products/:id", (req, res) => {
+  products = products.filter(p => p.id != req.params.id);
+  res.json({ msg: "deleted" });
+});
 
-  getProducts();
-}
-
-// DELETE product
-async function deleteProduct(id) {
-  await fetch(`http://localhost:5000/api/products/${id}`, {
-    method: "DELETE"
-  });
-
-  getProducts();
-}
-
-// page load
-getProducts();
+app.listen(5000, () => console.log("Server running on 5000"));
